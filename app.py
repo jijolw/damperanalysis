@@ -4,6 +4,7 @@ import os
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import base64
 
 # Initialize app
 app = Flask(__name__)
@@ -15,19 +16,18 @@ Session(app)
 REPORT_FOLDER = "reports"
 os.makedirs(REPORT_FOLDER, exist_ok=True)
 
-# Read Google credentials and Python version from environment variables
-google_credentials_path = os.getenv("GOOGLE_CREDENTIALS", None)  # Path to Google credentials JSON
+# Read Google credentials from environment variable (Base64 encoded)
+google_credentials_b64 = os.getenv("GOOGLE_CREDENTIALS", None)  # Base64 encoded credentials
 python_version = os.getenv("PYTHON_VERSION", None)  # Python version (optional for logging)
 
 # Check if credentials are set
-if google_credentials_path:
+if google_credentials_b64:
     try:
-        with open(google_credentials_path) as f:
-            google_credentials = json.load(f)
-            # Optionally, print or use the credentials as needed
-            print("Google credentials loaded successfully.")
+        # Decode the Base64-encoded credentials
+        google_credentials_json = json.loads(base64.b64decode(google_credentials_b64).decode("utf-8"))
+        print("Google credentials loaded successfully.")
     except Exception as e:
-        print(f"Error loading Google credentials: {e}")
+        print(f"Error decoding Google credentials: {e}")
 else:
     print("Google credentials not found.")
 
@@ -39,9 +39,10 @@ else:
 
 # Google Sheets authentication function
 def authenticate_google_sheets():
-    if google_credentials_path:
+    if google_credentials_b64:
+        # Authenticate using decoded credentials
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-            google_credentials, scope=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+            google_credentials_json, scope=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         )
         client = gspread.authorize(credentials)
         return client
