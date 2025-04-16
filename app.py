@@ -1,6 +1,9 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, session, redirect, url_for
 from flask_session import Session
 import os
+import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # Initialize app
 app = Flask(__name__)
@@ -12,7 +15,56 @@ Session(app)
 REPORT_FOLDER = "reports"
 os.makedirs(REPORT_FOLDER, exist_ok=True)
 
-# Import and register blueprints
+# Read Google credentials and Python version from environment variables
+google_credentials_path = os.getenv("GOOGLE_CREDENTIALS", None)  # Path to Google credentials JSON
+python_version = os.getenv("PYTHON_VERSION", None)  # Python version (optional for logging)
+
+# Check if credentials are set
+if google_credentials_path:
+    try:
+        with open(google_credentials_path) as f:
+            google_credentials = json.load(f)
+            # Optionally, print or use the credentials as needed
+            print("Google credentials loaded successfully.")
+    except Exception as e:
+        print(f"Error loading Google credentials: {e}")
+else:
+    print("Google credentials not found.")
+
+# Check if Python version is set
+if python_version:
+    print(f"Python Version: {python_version}")
+else:
+    print("Python version is not set.")
+
+# Google Sheets authentication function
+def authenticate_google_sheets():
+    if google_credentials_path:
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            google_credentials, scope=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        )
+        client = gspread.authorize(credentials)
+        return client
+    else:
+        raise Exception("Google credentials are missing. Please set up the environment variable.")
+
+# Example route to fetch data from Google Sheets
+@app.route("/fetch_data")
+def fetch_data():
+    try:
+        # Authenticate and retrieve data from Google Sheets
+        client = authenticate_google_sheets()
+        
+        # Example: Open a specific sheet by title
+        sheet = client.open("Your Google Sheet Name").sheet1  # Replace with your sheet name
+        data = sheet.get_all_records()  # Fetch all records
+        
+        return render_template("data_display.html", data=data)  # Render data to a new template
+        
+    except Exception as e:
+        return f"Error fetching data from Google Sheets: {e}"
+
+# Import and register blueprints (routes)
 from routes.index_route import index_bp
 from routes.download_route import download_bp
 from routes.make_analysis import make_analysis_bp
@@ -40,8 +92,8 @@ def home():
 @app.route('/favicon.ico')
 def favicon():
     return "", 204
-from flask import request, session, redirect, url_for
 
+# Route to set period (from home.html form)
 @app.route("/set_period")
 def home_redirect():
     start_date = request.args.get("start_date")
@@ -53,6 +105,6 @@ def home_redirect():
 
     return redirect(next_page)
 
-
+# Running the app
 if __name__ == "__main__":
-    app.run(debug=True)  
+    app.run(debug=True)
