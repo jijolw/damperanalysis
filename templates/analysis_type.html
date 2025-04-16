@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Type Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+        }
+        select, button {
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        #result-section {
+            margin-top: 30px;
+        }
+        .download-link {
+            margin-top: 15px;
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .download-link:hover {
+            background-color: #2980b9;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Type Analysis</h2>
+    <label for="damperType">Select TYPE OF DAMPER:</label>
+    <select id="damperType">
+        <option value="">-- Loading Types --</option>
+    </select>
+    <button id="analyzeBtn">Analyze</button>
+    <span id="loading" class="loading" style="display: none;">Loading...</span>
+    
+    <div id="result-section">
+        <div id="analysis-table"></div>
+        <a id="downloadLink" class="download-link" href="#" style="display: none;">Download Excel Report</a>
+        <p class="error" id="errorMsg" style="display: none;"></p>
+    </div>
+    
+    <script>
+        // Load damper types dynamically
+        function loadDamperTypes() {
+            $.getJSON("/get_damper_types", function(data) {
+                const dropdown = $('#damperType');
+                dropdown.empty();
+                dropdown.append('<option value="">-- Select Type --</option>');
+                data.types.forEach(function(type) {
+                    dropdown.append(`<option value="${type}">${type}</option>`);
+                });
+            }).fail(function(xhr) {
+                const errorMsg = xhr.responseJSON?.error || "Failed to load damper types.";
+                $('#errorMsg').text(errorMsg).show();
+            });
+        }
+        
+        // Trigger analysis
+        $('#analyzeBtn').click(function() {
+            const selectedType = $('#damperType').val();
+            if (!selectedType) {
+                $('#errorMsg').text("Please select a damper type.").show();
+                return;
+            }
+            
+            $('#errorMsg').hide();
+            $('#analysis-table').html("");
+            $('#downloadLink').hide();
+            $('#loading').show();
+            
+            $.getJSON("/analyze_type", { value: selectedType })
+                .done(function(response) {
+                    $('#analysis-table').html(response.table_html);
+                    $('#downloadLink').attr("href", response.download_link).show();
+                    $('#loading').hide();
+                })
+                .fail(function(xhr) {
+                    const errorMsg = xhr.responseJSON?.error || "Something went wrong during analysis.";
+                    $('#analysis-table').empty();
+                    $('#errorMsg').text(errorMsg).show();
+                    $('#loading').hide();
+                });
+        });
+        
+        // Initialize on page load
+        $(document).ready(function() {
+            loadDamperTypes();
+        });
+    </script>
+</body>
+</html>

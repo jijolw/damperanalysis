@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Make for Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Select Make for Analysis</h1>
+
+        <form method="POST" action="{{ url_for('make_analysis.select_make') }}">
+            <label for="make">Choose Make:</label>
+            <select id="make" name="make" required>
+                {% for make in makes %}
+                    <option value="{{ make }}">{{ make }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Analyze</button>
+        </form>
+    </div>
+</body>
+</html>

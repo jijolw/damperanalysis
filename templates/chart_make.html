@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Damper Failure Analysis by Make</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 2rem;
+    }
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 80%;
+      margin: 2rem auto;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    select, button {
+      padding: 0.5rem 1rem;
+      margin: 1rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>Damper Failure Analysis by Make</h2>
+
+  <div>
+    <label for="makeDropdown">Select Make:</label>
+    <select id="makeDropdown"></select>
+    <button onclick="loadCharts()">Load Chart</button>
+    <a href="/" style="text-decoration: none;">
+      <button>Home</button>
+    </a>
+  </div>
+
+  <h3 id="chart-title"></h3>
+
+  <div class="chart-container">
+    <canvas id="barChart"></canvas>
+  </div>
+  
+  <div class="chart-container">
+    <canvas id="groupedBarChart"></canvas>
+  </div>
+  
+  <div class="chart-container">
+    <canvas id="pieChart"></canvas>
+  </div>
+  
+  <div class="chart-container">
+    <canvas id="paretoChart"></canvas>
+  </div>
+
+  <!-- New Chart: Bar Chart - Failure % by Age Group -->
+  <div class="chart-container">
+    <canvas id="barAgeChart"></canvas>
+  </div>
+
+  <!-- New Chart: Pie Chart - Failure % by Damper Type -->
+  <div class="chart-container">
+    <canvas id="pieTypeChart"></canvas>
+  </div>
+
+  <!-- New Chart: Pareto - Make vs Damper Type -->
+  <div class="chart-container">
+    <canvas id="paretoMakeTypeChart"></canvas>
+  </div>
+
+  <script>
+    const makeDropdown = document.getElementById('makeDropdown');
+    const chartTitle = document.getElementById('chart-title');
+
+    let barChart, groupedBarChart, pieChart, paretoChart;
+    let barAgeChart, pieTypeChart, paretoMakeTypeChart;
+
+    // Dynamically populate the dropdown from Google Sheets data
+    fetch('/get_all_makes')
+      .then(res => res.json())
+      .then(data => {
+        data.makes.forEach(make => {
+          const option = document.createElement('option');
+          option.value = make;
+          option.textContent = make;
+          makeDropdown.appendChild(option);
+        });
+      })
+      .catch(error => {
+        alert("Failed to load makes: " + error);
+      });
+
+    function loadCharts() {
+      const make = makeDropdown.value;
+      if (!make) return alert("Please select a make");
+
+      fetch(`/chart_make_analysis?make=${make}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+            return;
+          }
+
+          chartTitle.textContent = data.title;
+
+          // Destroy existing charts if present
+          [barChart, groupedBarChart, pieChart, paretoChart, barAgeChart, pieTypeChart, paretoMakeTypeChart].forEach(chart => {
+            if (chart) chart.destroy();
+          });
+
+          // Chart 1: Bar Chart
+          barChart = new Chart(document.getElementById("barChart"), {
+            type: "bar",
+            data: {
+              labels: data.labels,
+              datasets: [{
+                label: "Failure %",
+                data: data.values,
+                backgroundColor: "rgba(75, 192, 192, 0.7)"
+              }]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                datalabels: {
+                  formatter: value => value > 0 ? value + "%" : "",
+                  anchor: 'end',
+                  align: 'top',
+                  font: { size: 14 }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: "Failure %",
+                    font: { size: 14 }
+                  }
+                },
+                x: {
+                  ticks: {
+                    font: { size: 12 }
+                  }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 2: Grouped Bar Chart
+          groupedBarChart = new Chart(document.getElementById("groupedBarChart"), {
+            type: "bar",
+            data: {
+              labels: data.labels,
+              datasets: data.ageDatasets
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                datalabels: {
+                  formatter: value => value > 0 ? value + "%" : "",
+                  anchor: 'center',
+                  align: 'center',
+                  font: { size: 12 }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: "Failure %",
+                    font: { size: 14 }
+                  }
+                },
+                x: {
+                  ticks: { font: { size: 12 } }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 3: Pie Chart
+          pieChart = new Chart(document.getElementById("pieChart"), {
+            type: "pie",
+            data: {
+              labels: data.pieChart.labels,
+              datasets: [{
+                data: data.pieChart.values,
+                backgroundColor: data.pieChart.backgroundColor
+              }]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: data.pieChart.title,
+                  font: { size: 16 }
+                },
+                datalabels: {
+                  formatter: value => value > 0 ? value + "%" : "",
+                  color: "#000",
+                  font: { size: 14, weight: 'bold' }
+                },
+                legend: {
+                  position: 'right',
+                  labels: { font: { size: 12 } }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 4: Pareto Chart
+          paretoChart = new Chart(document.getElementById("paretoChart"), {
+            type: "bar",
+            data: {
+              labels: data.paretoChart.labels,
+              datasets: [
+                {
+                  label: "Failures",
+                  data: data.paretoChart.values,
+                  backgroundColor: "rgba(255, 99, 132, 0.6)",
+                  yAxisID: 'y'
+                },
+                {
+                  label: "Cumulative %",
+                  data: data.paretoChart.cumulative,
+                  type: 'line',
+                  borderColor: "rgba(54, 162, 235, 1)",
+                  backgroundColor: "rgba(54, 162, 235, 0.3)",
+                  yAxisID: 'y1'
+                }
+              ]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: data.paretoChart.title,
+                  font: { size: 16 }
+                },
+                datalabels: { display: false },
+                legend: { labels: { font: { size: 12 } } }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: "Failures", font: { size: 14 } }
+                },
+                y1: {
+                  beginAtZero: true,
+                  position: 'right',
+                  grid: { drawOnChartArea: false },
+                  title: { display: true, text: "Cumulative %", font: { size: 14 } },
+                  ticks: {
+                    callback: value => value + '%',
+                    font: { size: 12 }
+                  }
+                },
+                x: { ticks: { font: { size: 12 } } }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 5: Bar Chart - Failure % by Age Group
+          barAgeChart = new Chart(document.getElementById("barAgeChart"), {
+            type: "bar",
+            data: {
+              labels: data.barChart_ageWise.labels,
+              datasets: [{
+                label: "Failure %",
+                data: data.barChart_ageWise.values,
+                backgroundColor: "rgba(255, 206, 86, 0.7)"
+              }]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: data.barChart_ageWise.title,
+                  font: { size: 16 }
+                },
+                datalabels: {
+                  formatter: value => value > 0 ? value + "%" : "",
+                  anchor: 'end',
+                  align: 'top',
+                  font: { size: 14 }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: "Failure %", font: { size: 14 } }
+                },
+                x: {
+                  ticks: { font: { size: 12 } }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 6: Pie Chart - Failure % by TYPE OF DAMPER
+          pieTypeChart = new Chart(document.getElementById("pieTypeChart"), {
+            type: "pie",
+            data: {
+              labels: data.pieChart_typeWise.labels,
+              datasets: [{
+                data: data.pieChart_typeWise.values,
+                backgroundColor: data.pieChart_typeWise.backgroundColor
+              }]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: data.pieChart_typeWise.title,
+                  font: { size: 16 }
+                },
+                datalabels: {
+                  formatter: value => value > 0 ? value + "%" : "",
+                  color: "#000",
+                  font: { size: 14, weight: 'bold' }
+                },
+                legend: {
+                  position: 'right',
+                  labels: { font: { size: 12 } }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+          // Chart 7: Pareto - Make vs TYPE OF DAMPER
+          paretoMakeTypeChart = new Chart(document.getElementById("paretoMakeTypeChart"), {
+            type: "bar",
+            data: {
+              labels: data.paretoChart_makeType.labels,
+              datasets: [
+                {
+                  label: "Failures",
+                  data: data.paretoChart_makeType.values,
+                  backgroundColor: "rgba(153, 102, 255, 0.6)",
+                  yAxisID: 'y'
+                },
+                {
+                  label: "Cumulative %",
+                  data: data.paretoChart_makeType.cumulative,
+                  type: 'line',
+                  borderColor: "rgba(255, 159, 64, 1)",
+                  backgroundColor: "rgba(255, 159, 64, 0.3)",
+                  yAxisID: 'y1'
+                }
+              ]
+            },
+            options: {
+              maintainAspectRatio: false,
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: data.paretoChart_makeType.title,
+                  font: { size: 16 }
+                },
+                datalabels: { display: false },
+                legend: { labels: { font: { size: 12 } } }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: "Failures", font: { size: 14 } }
+                },
+                y1: {
+                  beginAtZero: true,
+                  position: 'right',
+                  grid: { drawOnChartArea: false },
+                  title: { display: true, text: "Cumulative %", font: { size: 14 } },
+                  ticks: {
+                    callback: value => value + '%',
+                    font: { size: 12 }
+                  }
+                },
+                x: {
+                  ticks: { font: { size: 12 } }
+                }
+              }
+            },
+            plugins: [ChartDataLabels]
+          });
+
+        })
+        .catch(error => {
+          alert("Error loading charts: " + error);
+        });
+    }
+  </script>
+</body>
+</html>

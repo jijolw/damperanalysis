@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make Analysis Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f8fa;
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        table th, table td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        table th {
+            background-color: #3c6382;
+            color: white;
+        }
+        table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .download-btn {
+            display: block;
+            width: fit-content;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #3c6382;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+        }
+        .download-btn:hover {
+            background-color: #2e86de;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Make-wise Analysis Report</h1>
+
+        <!-- Display the summary table dynamically -->
+        {% if table_html %}
+            <div>
+                {{ table_html | safe }}
+            </div>
+        {% else %}
+            <p>No data available for the selected make. Please try another selection.</p>
+        {% endif %}
+
+        <!-- Download button -->
+        {% if download_link %}
+            <a href="{{ download_link }}" class="download-btn">Download Excel Report</a>
+        {% else %}
+            <p>Report not available for download. Please try again later.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Failure Analysis by Damper Type</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .chart-container {
+      width: 90%;
+      max-width: 1000px;
+      margin: 20px auto;
+    }
+    canvas {
+      display: block;
+      margin: 30px auto;
+      max-height: 400px;
+      width: 100%;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    select, button {
+      font-size: 16px;
+      padding: 8px 12px;
+      margin: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      margin: 0 5px;
+      background-color: #eee;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background-color: #007BFF;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align: center;">
+    <h1>Failure Analysis by Damper Type</h1>
+    <select id="typeDropdown">
+      <option value="">Select Type</option>
+    </select>
+    <button onclick="loadCharts()">Analyze</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-button active" onclick="showTab(0)">Failure % & Age</button>
+    <button class="tab-button" onclick="showTab(1)">By Age Group</button>
+    <button class="tab-button" onclick="showTab(2)">By Make</button>
+  </div>
+
+  <h2 id="mainTitle"></h2>
+
+  <div class="chart-container">
+    <div class="tab-content active">
+      <canvas id="barChartMain"></canvas>
+      <canvas id="barChartStacked"></canvas>
+    </div>
+    <div class="tab-content">
+      <canvas id="pieChart"></canvas>
+      <canvas id="paretoChart"></canvas>
+      <canvas id="barChartAge"></canvas>
+    </div>
+    <div class="tab-content">
+      <canvas id="pieChartMake"></canvas>
+      <canvas id="paretoChartTypeMake"></canvas>
+    </div>
+  </div>
+
+  <script>
+    let charts = [];
+
+    function clearCharts() {
+      charts.forEach(chart => chart.destroy());
+      charts = [];
+    }
+
+    async function fetchTypes() {
+      const res = await fetch('/get_all_types');
+      const data = await res.json();
+      const dropdown = document.getElementById('typeDropdown');
+      dropdown.innerHTML = '<option value="">Select Type</option>';
+      data.types.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        dropdown.appendChild(option);
+      });
+    }
+
+    async function loadCharts() {
+      const type = document.getElementById('typeDropdown').value;
+      if (!type) return alert("Please select a type.");
+
+      const res = await fetch(`/chart_type_analysis?type=${encodeURIComponent(type)}`);
+      const data = await res.json();
+
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      clearCharts();
+      document.getElementById('mainTitle').textContent = data.title;
+
+      charts.push(new Chart(document.getElementById("barChartMain"), {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: "Failure %",
+            data: data.values,
+            backgroundColor: "rgba(255, 99, 132, 0.7)"
+          }]
+        },
+        options: { plugins: data.options.plugins },
+        plugins: [ChartDataLabels]
+      }));
+
+      charts.push(new Chart(document.getElementById("barChartStacked"), {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: data.ageDatasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Failure % by Make and Age Group"
+            },
+            datalabels: data.options.plugins.datalabels
+          }
+        },
+        plugins: [ChartDataLabels]
+      }));
+
+      charts.push(new Chart(document.getElementById("pieChart"), {
+        type: 'pie',
+        data: {
+          labels: data.pieChart.labels,
+          datasets: [{
+            data: data.pieChart.values,
+            backgroundColor: data.pieChart.backgroundColor
+          }]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: data.pieChart.title
+            }
+          }
+        }
+      }));
+
+      charts.push(new Chart(document.getElementById("paretoChart"), {
+        type: 'bar',
+        data: {
+          labels: data.paretoChart.labels,
+          datasets: [
+            {
+              label: "Failures",
+              data: data.paretoChart.values,
+              backgroundColor: "rgba(54, 162, 235, 0.7)",
+              yAxisID: 'y'
+            },
+            {
+              label: "Cumulative %",
+              data: data.paretoChart.cumulative,
+              type: 'line',
+              borderColor: "rgba(255, 99, 132, 1)",
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: data.paretoChart.title
+            }
+          },
+          scales: {
+            y: { beginAtZero: true },
+            y1: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: { callback: val => val + '%' }
+            }
+          }
+        }
+      }));
+
+      charts.push(new Chart(document.getElementById("barChartAge"), {
+        type: 'bar',
+        data: {
+          labels: data.barChart_ageWise.labels,
+          datasets: [{
+            label: "Failure %",
+            data: data.barChart_ageWise.values,
+            backgroundColor: "rgba(75, 192, 192, 0.7)"
+          }]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: data.barChart_ageWise.title
+            }
+          }
+        }
+      }));
+
+      charts.push(new Chart(document.getElementById("pieChartMake"), {
+        type: 'pie',
+        data: {
+          labels: data.pieChart_makeWise.labels,
+          datasets: [{
+            data: data.pieChart_makeWise.values,
+            backgroundColor: data.pieChart_makeWise.backgroundColor
+          }]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: data.pieChart_makeWise.title
+            }
+          }
+        }
+      }));
+
+      charts.push(new Chart(document.getElementById("paretoChartTypeMake"), {
+        type: 'bar',
+        data: {
+          labels: data.paretoChart_typeMake.labels,
+          datasets: [
+            {
+              label: "Failures",
+              data: data.paretoChart_typeMake.values,
+              backgroundColor: "rgba(255, 159, 64, 0.7)",
+              yAxisID: 'y'
+            },
+            {
+              label: "Cumulative %",
+              data: data.paretoChart_typeMake.cumulative,
+              type: 'line',
+              borderColor: "rgba(153, 102, 255, 1)",
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: data.paretoChart_typeMake.title
+            }
+          },
+          scales: {
+            y: { beginAtZero: true },
+            y1: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: { callback: val => val + '%' }
+            }
+          }
+        }
+      }));
+    }
+
+    function showTab(index) {
+      document.querySelectorAll('.tab-button').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+      document.querySelectorAll('.tab-content').forEach((tab, i) => {
+        tab.classList.toggle('active', i === index);
+      });
+    }
+
+    window.onload = fetchTypes;
+  </script>
+</body>
+</html>

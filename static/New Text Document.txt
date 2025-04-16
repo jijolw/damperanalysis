@@ -1,0 +1,18 @@
+import os
+from flask import Blueprint, request, session, send_file
+
+download_bp = Blueprint("download", __name__)
+
+@download_bp.route("/download")
+def download():
+    # Check if analysis file is requested via query parameter
+    analysis_file = request.args.get("file")
+    if analysis_file and os.path.exists(analysis_file):
+        return send_file(analysis_file, as_attachment=True)
+
+    # Fall back to session-stored report file
+    report_file = session.get("report_file")
+    if not report_file or not os.path.exists(report_file):
+        return "No report available. Please generate a report first.", 404
+
+    return send_file(report_file, as_attachment=True)

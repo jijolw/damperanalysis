@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Damper Failure Analysis - Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .nav-buttons {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .nav-buttons button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-buttons button:hover {
+            background-color: #45a049;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+    </style>
+    <script>
+        function submitWithRedirect(target) {
+            const form = document.getElementById("dateForm");
+            const nextInput = document.getElementById("nextInput");
+            const start = document.getElementById("start").value;
+            const end = document.getElementById("end").value;
+
+            if (!start || !end) {
+                alert("Please select both start and end dates.");
+                return;
+            }
+
+            nextInput.value = target;
+            form.submit();
+        }
+    </script>
+</head>
+<body>
+    <h1>Welcome to Damper Failure Analysis Dashboard</h1>
+    <p>Please select a time period for analysis:</p>
+
+    <form id="dateForm" action="{{ url_for('home_redirect') }}" method="get">
+        <div class="form-section">
+            <label for="start">Start Date:</label>
+            <input type="date" id="start" name="start_date" required>
+
+            <label for="end" style="margin-left: 20px;">End Date:</label>
+            <input type="date" id="end" name="end_date" required>
+
+            <input type="hidden" id="nextInput" name="next" value="">
+        </div>
+
+        <div class="nav-buttons">
+            <button type="button" onclick="submitWithRedirect('/filter')">Filter Page</button>
+            <button type="button" onclick="submitWithRedirect('/select_make')">Make Analysis</button>
+            <button type="button" onclick="submitWithRedirect('/analysis_type')">Type Analysis</button>
+            <button type="button" onclick="submitWithRedirect('/analysis_age')">Age Analysis</button>
+            <button type="button" onclick="submitWithRedirect('/chart_make')">Chart - Make</button>
+            <button type="button" onclick="submitWithRedirect('/chart_type')">Chart - Type</button>
+            <button type="button" onclick="submitWithRedirect('/chart_age')">Chart - Age</button>
+        </div>
+    </form>
+</body>
+</html>

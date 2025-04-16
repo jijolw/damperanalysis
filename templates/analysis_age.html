@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Age-wise Damper Analysis</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <style>
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 25px;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+
+    .form-section {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    #analyzeBtn {
+      margin-left: 10px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #analyzeBtn:hover {
+      background-color: #2980b9;
+    }
+
+    #result {
+      margin-top: 25px;
+    }
+
+    /* Enhanced Table Styling */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      min-width: 800px;
+      border-collapse: collapse;
+      background-color: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .table thead {
+      background-color: #0d6efd;
+    }
+
+    .table thead th {
+      color: white;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px;
+      white-space: nowrap;
+      font-size: 0.95rem;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .table tbody tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+
+    .table tbody tr:hover {
+      background-color: #e2f0ff;
+    }
+
+    .table td {
+      padding: 10px;
+      text-align: center;
+      font-size: 0.92rem;
+      border: 1px solid #dee2e6;
+      vertical-align: middle;
+    }
+
+    .compact-table th,
+    .compact-table td {
+      padding: 8px 6px;
+      font-size: 0.88rem;
+    }
+
+    .download-btn {
+      display: inline-block;
+      background-color: #27ae60;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin-top: 15px;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: background-color 0.3s;
+    }
+
+    .download-btn:hover {
+      background-color: #2ecc71;
+      text-decoration: none;
+      color: white;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0,0,0,0.3);
+      border-radius: 50%;
+      border-top-color: #3498db;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <h2>Age-wise Damper Failure Analysis</h2>
+
+        <div class="form-section">
+          <div class="row align-items-center">
+            <div class="col-md-4">
+              <label for="age_group" class="form-label">Select Age Group:</label>
+              <select id="age_group" class="form-select">
+                <option value="" disabled selected>-- Choose an Age Group --</option>
+                <option value="Less than 2 years">Less than 2 years</option>
+                <option value="2-3 years">2-3 years</option>
+                <option value="3-5 years">3-5 years</option>
+                <option value="Above 5 years">Above 5 years</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button id="analyzeBtn" class="btn btn-primary">Analyze Data</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="result" class="mt-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  $(document).ready(function () {
+    $('#analyzeBtn').click(function () {
+      const selectedAge = $('#age_group').val();
+      if (!selectedAge) {
+        alert('Please select an age group!');
+        return;
+      }
+
+      $('#result').html('<div class="text-center p-4"><div class="loading"></div> Loading analysis, please wait...</div>');
+
+      $.ajax({
+        url: '/analyze_age',
+        method: 'GET',
+        data: { value: selectedAge },
+        success: function (data) {
+          if (data.error) {
+            $('#result').html(`<div class="alert alert-danger">Error: ${data.error}</div>`);
+          } else {
+            let tableHtml = data.table_html
+              .replace('class="table table-bordered"', 'class="table compact-table"')
+              .replace('<table', '<div class="table-responsive"><table')
+              .replace('</table>', '</table></div>');
+
+            $('#result').html(`
+              <div class="card">
+                <div class="card-body">
+                  ${tableHtml}
+                  <div class="text-center mt-3 mb-3">
+                    <a href="${data.download_link}" class="download-btn" download>
+                      <i class="fas fa-download"></i> Download Excel Report
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `);
+
+            $('.download-btn').on('click', function(e) {
+              e.preventDefault();
+              const downloadUrl = $(this).attr('href');
+              const form = $('<form>', {
+                method: 'GET',
+                action: downloadUrl
+              });
+              $('body').append(form);
+              form.submit();
+              form.remove();
+            });
+          }
+        },
+        error: function (xhr) {
+          let msg = "Something went wrong!";
+          try {
+            msg = xhr.responseJSON?.error || msg;
+          } catch (e) {}
+          $('#result').html(`<div class="alert alert-danger">Error: ${msg}</div>`);
+          console.error("AJAX Error:", xhr);
+        }
+      });
+    });
+  });
+  </script>
+</body>
+</html>
