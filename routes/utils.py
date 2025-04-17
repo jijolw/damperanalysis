@@ -1,21 +1,28 @@
 import os
+import json
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
+# Spreadsheet URL
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1LUQhz49MVcnhnk3UuLleI_VYMgFNWV1YBVPbHlfdjpc/edit#gid=0"
-CREDENTIALS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "credentials.json")
 
 def get_google_sheets_data():
     try:
         print("Starting get_google_sheets_data()...")
+
+        # Load credentials from environment variable
+        cred_json = os.environ.get("GOOGLE_CREDS")
+        if not cred_json:
+            raise Exception("GOOGLE_CREDS environment variable not set")
+
+        # Convert JSON string to dictionary
+        cred_dict = json.loads(cred_json)
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        print(f"Using credentials file at: {CREDENTIALS_FILE}")
-
-        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
+        creds = Credentials.from_service_account_info(cred_dict, scopes=scope)
         client = gspread.authorize(creds)
-        print("Authorized client.")
 
+        print("Authorized client.")
         sheet = client.open_by_url(SHEET_URL).sheet1
         print("Opened sheet.")
 
