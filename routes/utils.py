@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import gspread
+import base64
 from google.oauth2.service_account import Credentials
 
 # Spreadsheet URL
@@ -10,24 +11,33 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/1LUQhz49MVcnhnk3UuLleI_VYMgF
 def get_google_sheets_data():
     try:
         print("Starting get_google_sheets_data()...")
-
-        # Load credentials from environment variable
-        cred_json = os.environ.get("GOOGLE_CREDS")
-        if not cred_json:
-            raise Exception("GOOGLE_CREDS environment variable not set")
-
-        # Convert JSON string to dictionary
-        cred_dict = json.loads(cred_json)
+        
+        # Load credentials from environment variable - use the same name as the first file
+        google_credentials_b64 = os.environ.get("GOOGLE_CREDENTIALS")
+        
+        if not google_credentials_b64:
+            print("Environment variables available:", [k for k in os.environ.keys() if 'GOOGLE' in k.upper()])
+            raise Exception("GOOGLE_CREDENTIALS environment variable not set")
+        
+        # Decode from Base64 first (same as in first file)
+        try:
+            cred_dict = json.loads(base64.b64decode(google_credentials_b64).decode("utf-8"))
+            print("Successfully decoded credentials from Base64")
+        except Exception as e:
+            print(f"Error decoding credentials from Base64: {e}")
+            raise
+        
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(cred_dict, scopes=scope)
         client = gspread.authorize(creds)
-
         print("Authorized client.")
+        
         sheet = client.open_by_url(SHEET_URL).sheet1
         print("Opened sheet.")
-
+        
         data = sheet.get_all_records()
         print(f"Retrieved {len(data)} rows from sheet.")
+        
         df = pd.DataFrame(data)
         return df, None
     except Exception as e:

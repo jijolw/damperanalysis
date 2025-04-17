@@ -31,7 +31,7 @@ if google_credentials_b64:
     except Exception as e:
         print(f"Error decoding Google credentials: {e}")
 else:
-    print("Google credentials not found.")
+    print("Google credentials not found in environment variable GOOGLE_CREDENTIALS.")
 
 if python_version:
     print(f"Python Version: {python_version}")
@@ -41,14 +41,18 @@ else:
 # Authenticate Google Sheets
 def authenticate_google_sheets():
     if google_credentials_b64:
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-            google_credentials_json,
-            scope=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        )
-        client = gspread.authorize(credentials)
-        return client
+        try:
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+                google_credentials_json,
+                scope=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+            )
+            client = gspread.authorize(credentials)
+            return client
+        except Exception as e:
+            print(f"Error authenticating with Google Sheets: {e}")
+            raise
     else:
-        raise Exception("Google credentials are missing.")
+        raise Exception("Google credentials are missing. Please set the GOOGLE_CREDENTIALS environment variable.")
 
 # ----------------------------------------
 # PASSWORD PROTECTION
