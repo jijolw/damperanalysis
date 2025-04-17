@@ -88,12 +88,14 @@ def fetch_data():
         data = sheet.get_all_records()
         return render_template("data_display.html", data=data)
     except Exception as e:
+        print(f"Error fetching data: {e}")  # Log the error
         return f"Error fetching data: {e}"
 
 # ----------------------------------------
 # Register your Blueprints
 # ----------------------------------------
 
+# Ensure these route files exist and have defined routes
 from routes.index_route import index_bp
 from routes.download_route import download_bp
 from routes.make_analysis import make_analysis_bp
